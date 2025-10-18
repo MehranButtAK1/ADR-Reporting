@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Patient ADR Reporting Portal_ By HCK Pharma</title>
+    <title>Patient ADR Reporting Portal By HCK Pharma</title>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
     
     <style>
-        /* CSS for simple styling */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -21,35 +20,54 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            text-align: center; /* Center alignment for buttons/scanner */
         }
         h1 {
             color: #2c3e50;
-            text-align: center;
         }
-        /* QR Reader area for visual feedback */
+        .start-options {
+            margin-bottom: 25px;
+        }
+        .start-options button {
+            background-color: #2980b9;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+            width: 90%; /* Make buttons full width */
+            max-width: 250px;
+        }
+        .start-options button:hover {
+            background-color: #3498db;
+        }
+        /* Style the hidden file input */
+        #gallery-input {
+            display: none;
+        }
+        /* QR Reader area */
         #qr-reader {
             width: 100%;
             border: 2px solid #3498db;
             border-radius: 5px;
             margin-bottom: 20px;
-            min-height: 250px; /* Added minimum height */
+            min-height: 250px;
+            display: none; /* Hidden by default */
         }
         .drug-details, .adr-form {
             padding: 15px;
             border: 1px solid #ddd;
             border-radius: 5px;
             margin-top: 15px;
+            text-align: left;
         }
         .drug-details h2 {
             color: #27ae60;
         }
         .adr-form {
             background-color: #ecf0f1;
-        }
-        label {
-            display: block;
-            margin-top: 10px;
-            font-weight: bold;
         }
         input[type="text"], textarea {
             width: 95%;
@@ -58,31 +76,9 @@
             border: 1px solid #ccc;
             border-radius: 4px;
         }
-        button {
-            background-color: #e74c3c;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 20px;
-            font-size: 16px;
-        }
-        button:hover {
-            background-color: #c0392b;
-        }
-        .manual-input {
-            padding: 15px;
-            background: #f0f0f0;
-            border-radius: 5px;
-            margin-top: 15px;
-        }
-        .manual-input button {
-            background-color: #3498db;
-            margin-top: 10px;
-        }
-        .manual-input button:hover {
-             background-color: #2980b9;
+        .adr-form button {
+             background-color: #e74c3c;
+             width: auto;
         }
     </style>
 </head>
@@ -91,14 +87,14 @@
 <div class="container">
     <h1>💊 QR Reporting Portal (ADR)</h1>
 
+    <div class="start-options" id="start-options">
+        <button id="camera-button">📸 Scan via Camera</button>
+        <button id="gallery-trigger-button">🖼️ Select from Gallery</button>
+        <input type="file" id="gallery-input" accept="image/*">
+    </div>
+
     <div id="qr-reader"></div>
     <div id="qr-reader-results"></div>
-
-    <div class="manual-input">
-        <p style="font-weight:bold; color:#e67e22;">اگر کیمرہ کام نہ کرے یا ایپ کریش ہو تو:</p>
-        <input type="text" id="manual-qr-input" placeholder="QR Code کا ڈیٹا ڈالیں (مثال: AMX-002)">
-        <button id="manual-scan-button">Verify Drug</button>
-    </div>
 
     <div class="drug-details" id="drug-details-section" style="display:none;">
         <h2>Drug Information (Auto-Fetched)</h2>
@@ -107,7 +103,7 @@
         <p><strong>Batch No:</strong> <span id="batch-no"></span></p>
         <p><strong>Known ADRs:</strong> <span id="known-adrs"></span></p>
         
-        <button id="report-button">Report New Reaction</button>
+        <button id="report-button" style="background-color:#e67e22;">Report New Reaction</button>
     </div>
 
     <form class="adr-form" id="adr-report-form" style="display:none;">
@@ -128,11 +124,9 @@
 </div>
 
 <script>
-    // ----------------------------------------------------------------------
-    // 1. Data Mockup (Pharmacist Database)
-    // ----------------------------------------------------------------------
+    // --- DATA MOCKUP ---
     const drugDatabase = {
-        "AMX-002": { // <--- یہ QR Code کا ڈیٹا ہے
+        "AMX-002": { 
             name: "Amoxicillin 500mg",
             manufacturer: "ABC Pharma",
             batch: "AMX-002",
@@ -147,22 +141,24 @@
     };
 
     let html5QrcodeScanner = null;
+    const qrReaderId = "qr-reader";
+    const startOptions = document.getElementById('start-options');
 
-    // ----------------------------------------------------------------------
-    // 2. Core Function to Handle Decoded Text (Scan or Manual Input)
-    // ----------------------------------------------------------------------
+    // --- CORE LOGIC ---
     function processDecodedText(decodedText) {
         
-        // Trim and convert to uppercase for robust matching
+        // Stop the scanner if it's running
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.stop();
+        }
+
         const cleanText = decodedText.trim().toUpperCase(); 
         const drugData = drugDatabase[cleanText];
 
-        // Ensure previous results are cleared
-        document.getElementById('drug-details-section').style.display = 'none';
-        document.getElementById('adr-report-form').style.display = 'none';
-
+        // Hide unnecessary elements and display results
+        document.getElementById(qrReaderId).style.display = 'none';
+        
         if (drugData) {
-            // Drug details show karein
             document.getElementById('drug-name').textContent = drugData.name;
             document.getElementById('manufacturer').textContent = drugData.manufacturer;
             document.getElementById('batch-no').textContent = drugData.batch;
@@ -171,94 +167,93 @@
             document.getElementById('drug-details-section').style.display = 'block';
             document.getElementById('qr-reader-results').innerHTML = `<p style="color:#27ae60; font-weight:bold;">✅ Drug Found: ${drugData.name}</p>`;
 
-            // Manual input field ko clear karein
-            document.getElementById('manual-qr-input').value = '';
-
         } else {
-            // Error: Drug not found
-            document.getElementById('qr-reader-results').innerHTML = `<p style="color:#e74c3c; font-weight:bold;">❌ Error: Batch ID "${cleanText}" not found in database.</p>`;
+            document.getElementById('qr-reader-results').innerHTML = `<p style="color:#e74c3c; font-weight:bold;">❌ Error: Batch ID "${cleanText}" not found.</p>`;
+            // Show options again if drug is not found
+            startOptions.style.display = 'block';
         }
     }
 
-    // ----------------------------------------------------------------------
-    // 3. QR Scanner Initialization (Wrapped in try/catch to prevent crash)
-    // ----------------------------------------------------------------------
-    function onScanSuccess(decodedText, decodedResult) {
-        // Scanner success hone par
-        if (html5QrcodeScanner) {
-            html5QrcodeScanner.clear().then(() => {
-                document.getElementById('qr-reader').style.display = 'none'; 
-                processDecodedText(decodedText);
-            }).catch(error => {
-                console.error("Failed to stop scanner:", error);
-                processDecodedText(decodedText);
-            });
-        }
-    }
+    // --- BUTTON HANDLERS ---
+    
+    // 1. Camera Scan Handler
+    document.getElementById('camera-button').addEventListener('click', () => {
+        startOptions.style.display = 'none';
+        document.getElementById(qrReaderId).style.display = 'block';
+        document.getElementById('qr-reader-results').innerHTML = `<p style="color:#2c3e50;">Loading camera...</p>`;
 
-    // Try to initialize the scanner
-    try {
+        // Initialize and start scanner
         html5QrcodeScanner = new Html5QrcodeScanner(
-            "qr-reader", 
+            qrReaderId, 
             { fps: 10, qrbox: {width: 250, height: 250} },
             /* verbose= */ false);
 
-        html5QrcodeScanner.render(onScanSuccess, (error) => {
-            // Scanner fail ho jaye to console mein error show hoga, UI crash nahi hoga
-            console.warn("Scanner initialization error (expected in file:// context):", error);
-            document.getElementById('qr-reader-results').innerHTML = `<p style="color:#e67e22;">⚠️ Camera access denied. Please use the manual input below.</p>`;
-        });
-    } catch (e) {
-        console.error("Fatal error during scanner setup:", e);
-        document.getElementById('qr-reader-results').innerHTML = `<p style="color:#e67e22;">⚠️ Camera access failed. Please use the manual input below.</p>`;
-        document.getElementById('qr-reader').style.display = 'none';
-    }
-
-
-    // ----------------------------------------------------------------------
-    // 4. Manual Scan Button Logic
-    // ----------------------------------------------------------------------
-    document.getElementById('manual-scan-button').addEventListener('click', () => {
-        const manualInput = document.getElementById('manual-qr-input').value;
-        if (manualInput) {
-            processDecodedText(manualInput);
-        } else {
-            alert("Please enter the QR Code data first.");
-        }
+        html5QrcodeScanner.render(
+            (decodedText, decodedResult) => {
+                // Success callback
+                html5QrcodeScanner.clear().then(() => {
+                    processDecodedText(decodedText);
+                });
+            }, 
+            (error) => {
+                // Failure callback (e.g., camera permission denied)
+                document.getElementById('qr-reader-results').innerHTML = `<p style="color:#e74c3c;">⚠️ Camera access failed. Try selecting from Gallery.</p>`;
+                document.getElementById(qrReaderId).style.display = 'none';
+                startOptions.style.display = 'block';
+            }
+        );
     });
 
-    // ----------------------------------------------------------------------
-    // 5. ADR Report Form Logic
-    // ----------------------------------------------------------------------
+    // 2. Gallery Trigger Handler (Just simulates click on hidden file input)
+    document.getElementById('gallery-trigger-button').addEventListener('click', () => {
+        document.getElementById('gallery-input').click();
+    });
+
+    // 3. Gallery File Selection Handler
+    document.getElementById('gallery-input').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) {
+            return;
+        }
+
+        startOptions.style.display = 'none';
+        document.getElementById('qr-reader-results').innerHTML = `<p style="color:#2c3e50;">Scanning uploaded image...</p>`;
+
+        // Use the library to scan the uploaded image file
+        const html5QrCode = new Html5Qrcode(qrReaderId);
+        html5QrCode.scanFile(file, true)
+            .then(decodedText => {
+                // Success
+                processDecodedText(decodedText);
+            })
+            .catch(err => {
+                // Error (e.g., no QR code found in the image)
+                document.getElementById('qr-reader-results').innerHTML = `<p style="color:#e74c3c;">❌ Could not find QR code in the image. Try another image.</p>`;
+                startOptions.style.display = 'block';
+            });
+    });
+
+    // --- ADR FORM LOGIC ---
     
-    // 'Report New Reaction' button click hone par form show karein
     document.getElementById('report-button').addEventListener('click', () => {
         document.getElementById('adr-report-form').style.display = 'block';
-        document.getElementById('report-button').style.display = 'none'; // Button chupa dein
+        document.getElementById('report-button').style.display = 'none'; 
     });
 
-    // Form submit hone par
     document.getElementById('adr-report-form').addEventListener('submit', function(event) {
         event.preventDefault(); 
         
-        // Data collect karein
         const reportedDrug = document.getElementById('drug-name').textContent;
         const reportedBatch = document.getElementById('batch-no').textContent;
-        const reactionType = document.getElementById('reaction-type').value;
-        const reactionDetails = document.getElementById('reaction-details').value;
-        const patientContact = document.getElementById('patient-contact').value;
 
-        // User ko confirmation message dein
-        alert(`Thank you! Your report for ${reportedDrug} (Batch: ${reportedBatch}) has been successfully submitted to the Pharmacist's Dashboard.`);
+        alert(`Thank you! Your report for ${reportedDrug} (Batch: ${reportedBatch}) has been successfully submitted.`);
         
-        // Forms chupa dein aur page ko reset karein
+        // Reset the interface
         document.getElementById('drug-details-section').style.display = 'none';
         document.getElementById('adr-report-form').style.display = 'none';
-        document.getElementById('qr-reader-results').innerHTML = `<p style="color:#2c3e50;">Submission successful. Scan or enter a new drug ID.</p>`;
-        document.getElementById('report-button').style.display = 'block';
-
-        // Agar scanner band ho gaya ho to wapis shuru karne ki koshish karein
-        location.reload(); 
+        document.getElementById('qr-reader-results').innerHTML = ``;
+        startOptions.style.display = 'block';
+        document.getElementById('report-button').style.display = 'block'; 
     });
 
 </script>
