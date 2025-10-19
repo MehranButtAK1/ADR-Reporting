@@ -1,0 +1,18 @@
+[
+  {
+    "name": "Augmentin",
+    "batch": "AB12345",
+    "expiry": "2026-02",
+    "manufacturer": "GSK Pharma",
+    "condition": "Bacterial Infection",
+    "adrs": ["Diarrhea", "Rash", "Nausea", "Abdominal Pain"]
+  },
+  {
+    "name": "Gabica",
+    "batch": "GBC2025",
+    "expiry": "2025-11",
+    "manufacturer": "Getz Pharma",
+    "condition": "Neuropathic Pain",
+    "adrs": ["Dizziness", "Sleepiness", "Weight gain"]
+  }
+]
